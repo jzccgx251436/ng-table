@@ -1,0 +1,21 @@
+{
+  "name": "ng-table",
+  "version": "0.0.0",
+  "homepage": "https://github.com/kadjar/ng-table",
+  "authors": [
+    "Garrett Amini <kadjar@gmail.com>"
+  ],
+  "main": "app/",
+  "license": "WTFPL",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "angular": "~1.2.16",
+    "angular-classy": "~0.4.2"
+  }
+}
