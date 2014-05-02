@@ -4,7 +4,8 @@ App.classy.controller({
   name: 'TableCtrl',
   inject: ['$scope', 'tableService'],
   init: function() {
-    console.log('o')
+    this.$.stuff = 'cow'
+    console.log(this.$.filterInput)    
   }
 })
 
@@ -47,89 +48,6 @@ App.service('dataService', ['$location', '$q', '$http', function($location, $q, 
 
 }])
 
-App.service('templateService', function() {
-  var _templates = {
-    table: '<table></table>',
-    thead: '<thead></thead>',
-    tr: '<tr></tr>',
-    th: '<th></th>',
-    tbody: '<tbody></tbody>',
-    td: '<td></td>'
-  };
-
-  return {
-    new: function(tag) {
-      return angular.element(_templates[tag]);
-    }
-  }
-
-})
-
-App.factory('tableFactory', ['templateService', function(ts) {
-
-  var fac = function(target) {
-    this.dom = {
-      table: ts.new('table')
-    };    
-
-    ['thead', 'tbody'].forEach(function(key) { 
-      this.dom[key] = {};
-      this.dom[key].el = this.dom.table.append(ts.new(key));
-      this.dom[key].tr = this.dom.table.append(ts.new('tr'));
-      this.dom[key].rowcells = [[]];
-    }, this);
-    
-    this.cols = []
-    this.rows = []
-
-    target.append(this.dom.table);
-  }
-
-  fac.prototype.addCol = function(header) {
-    this.dom.thead.rowcells[0].push(ts.new('td').textContent = header);
-    this.dom.tbody.rowcells.forEach(function(row) {
-      row.push(ts.new('td'))
-    },this)
-    this.cols.push(header);
-  };
-
-  fac.prototype.addRow = function(data) {
-    var len = this.dom.tbody.rowcells.push([]);
-
-    data.forEach(function() {
-      this.dom.tbody.rowcells[len].push(ts.new('td').textContent = data)
-    },this)
-  }    
-
-  fac.prototype.addRows = function(len) {
-    for (var i=0; i < len; i++) {
-      this.dom.tbody.rowcells.push([])
-    }
-  };
-
-  fac.prototype.setData = function(dataObj) {
-    if (dataObj instanceof Array)
-      dataObj = dataObj[0];
-    
-    Object.keys(dataObj).forEach(this.addCol, this)
-
-    var lens = [];
-    
-    for (var key in dataObj) {
-      lens.push(dataObj[key].length);
-    }
-    this.addRows(Math.max.apply(null, lens))
-
-    for (var key in dataObj) {
-
-    }
-  };
-
-  
-
-  return fac;
-}])
-
 App.directive('ngTableData', function() {
   return {
     restrict: 'E',
@@ -154,35 +72,65 @@ App.directive('ngTable', function() {
     controller: App.classy.controller({
       inject: ['$scope', '$element', '$attrs', '$transclude', '$location','tableService', 'dataService'],
       init: function() {
+        this.$.filter = '';
+        this.$.stuffy = "pants"
         this.dataService.init(this.$transclude().text()).then(function(data) {
           this.$.data = data;
-          this.$.headers = Object.keys(this.$.data[0])
+          this.$.headers = [];
+          Object.keys(this.$.data[0]).forEach(function(key) {
+            this.$.headers.push({key: key, checked: false})
+          }, this)
         }.bind(this))
       }
     }),
-    template: '<table class="ng-table">' +
+    link: function(s,e,a) {
+      console.log(s.stuff)
+    },
+    template: 'Search: <input type="text" ng-model="filter"></input><br>' +
+    '<table class="ng-table">' +
       '<thead><tr>' +
-        '<th ng-repeat="key in headers">{{key}}</th>' +
+        '<th ng-repeat="key in headers"><label>{{key.key}} <input type="checkbox" ng-model="key.checked" /></label></th>' +
       '</tr></thead>' +
       '<tbody>' +
-        '<tr ng-repeat="row in data" ng-row></tr>' +
+        '<tr ng-repeat="row in data | tableFilter: filter : headers" ngtable-row row="row" headers="headers"></tr>' +
       '</tbody>' + 
     '</table>'
   }
 })
-App.directive('ngRow', function() {
+
+App.directive('ngtableRow', function() {
   return {
-    restrict: 'A',    
-    controller: App.classy.controller({
-      inject: ['$scope', '$element', '$attrs'],
-      init: function() {
-        this.$.data = [];
-        this.$.$parent.headers.forEach(function(key) {
-          this.$.data.push(this.$.$parent.data[0][key])
-        }, this)
-      }
-    }),
-    template: '<td ng-repeat="key in data track by $index">{{key}}</td>'
+    restrict: 'A',
+    scope: { row: '=', headers: '=' },
+    link: function(s,e,a) {      
+    },
+    template: '<td ng-repeat="key in headers">{{row[key.key]}}</td>'
   }
 })
 
+App.filter('tableFilter', function() {
+  function getHeaders(headers) {
+    var out = [];
+    headers.forEach(function(header) {
+      if (header.checked)
+        out.push(header.key)
+    })
+
+    if (!out.length)
+      headers.forEach(function(header) { out.push(header.key) })
+      
+    return out;
+  }
+
+  return function(data, filtertxt, headers) {
+    this.searchHeaders = getHeaders(headers);
+
+    var out =  data.filter(function(obj) {
+      return this.searchHeaders.some(function(header) {
+        return obj[header].toString().toLowerCase().indexOf(filtertxt) > -1
+      })      
+    }, this)
+
+    return out
+  }
+})
